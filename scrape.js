@@ -42,14 +42,14 @@ async function makeSong(page) {
 
   while (true) {
     await page.waitForXPath(
-      '//div[@id="qpAnimeNameHider" and contains(@class, "hide")]'
+      "//*[@id='qpAnimeNameHider' and contains(@class, 'hide')]"
     );
 
     const song = await makeSong(page);
     await saveSong(song);
 
     await page.waitForXPath(
-      '//div[@id="qpAnimeNameHider" and not(contains(@class, "hide"))]'
+      "//*[@id='qpAnimeNameHider' and not(contains(@class, 'hide'))]"
     );
   }
 })();
