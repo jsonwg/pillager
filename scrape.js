@@ -22,7 +22,7 @@ async function saveSong(song) {
   });
 }
 
-async function makeSong(page) {
+async function getSong(page) {
   const song = await page.$$eval(
     "#qpAnimeName, #qpSongName, #qpSongArtist, #qpSongType",
     (elems) => elems.map((e) => e.textContent)
@@ -45,7 +45,7 @@ async function makeSong(page) {
       "//*[@id='qpAnimeNameHider' and contains(@class, 'hide')]"
     );
 
-    const song = await makeSong(page);
+    const song = await getSong(page);
     await saveSong(song);
 
     await page.waitForXPath(
