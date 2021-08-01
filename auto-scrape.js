@@ -19,9 +19,12 @@ async function configureSettings(page) {
   await page.evaluate(() => hostModal.displayHostSolo());
   await page.evaluate(() => hostModal.toggleLoadContainer());
   await new Promise((_) => setTimeout(_, 800));
+
   await page.click("#mhLoadFromSaveCodeButton");
   await page.type(".swal2-input", SETTINGS);
+  await new Promise((_) => setTimeout(_, 1000));
   await page.keyboard.press("Enter");
+
   await page.evaluate(() => roomBrowser.host());
 }
 
@@ -31,10 +34,24 @@ async function startGame(page) {
   await page.waitForXPath(
     "//*[@id='qpHiderText' and not(contains(., 'Loading'))]"
   );
-  console.log("In game");
 }
 
 async function getSong(page) {
+  await page.waitForXPath(
+    "//*[@id='qpAnimeNameHider' and not(contains(@class, 'hide'))]"
+  );
+  await page.evaluate(() => quiz.skipClicked());
+  await page.waitForXPath(
+    "//*[@id='qpAnimeNameHider' and contains(@class, 'hide')]"
+  );
+  await page.evaluate(() => quiz.skipClicked());
+
+  const song = await page.$$eval(
+    "#qpAnimeName, #qpSongName, #qpSongArtist, #qpSongType",
+    (elems) => elems.map((e) => e.textContent)
+  );
+  song.push(await page.$eval("#qpSongVideoLink", (e) => e.href));
+  return song;
 }
 
 async function saveSong(song) {
@@ -45,10 +62,7 @@ async function saveSong(song) {
 }
 
 (async () => {
-  const browser = await puppeteer.connect({
-    browserURL: "http://127.0.0.1:4444",
-    defaultViewport: null,
-  });
+  const browser = await puppeteer.launch({ defaultViewport: null });
   const page = await browser.newPage();
 
   await login(page);
@@ -56,11 +70,9 @@ async function saveSong(song) {
 
   while (page.url() == "https://animemusicquiz.com/") {
     await startGame(page);
-    for (const i; i < 100; i++) {
+    for (let i = 0; i < 100; i++) {
       const song = await getSong(page);
       await saveSong(song);
     }
   }
-
-  browser.disconnect()
 })();
