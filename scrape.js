@@ -15,13 +15,6 @@ async function detectAMQ(browser) {
   return page;
 }
 
-async function saveSong(song) {
-  const opts = { args: [song[0], song[1], song[2], song[3], song[4]] };
-  PythonShell.run("write.py", opts, (err) => {
-    if (err) throw err;
-  });
-}
-
 async function getSong(page) {
   const song = await page.$$eval(
     "#qpAnimeName, #qpSongName, #qpSongArtist, #qpSongType",
@@ -29,6 +22,13 @@ async function getSong(page) {
   );
   song.push(await page.$eval("#qpSongVideoLink", (e) => e.href));
   return song;
+}
+
+async function saveSong(song) {
+  const opts = { args: [song[0], song[1], song[2], song[3], song[4]] };
+  PythonShell.run("write.py", opts, (err) => {
+    if (err) throw err;
+  });
 }
 
 (async () => {
