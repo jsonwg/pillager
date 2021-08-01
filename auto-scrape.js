@@ -22,6 +22,26 @@ async function configureSettings(page) {
   await page.click("#mhLoadFromSaveCodeButton");
   await page.type(".swal2-input", SETTINGS);
   await page.keyboard.press("Enter");
+  await page.evaluate(() => roomBrowser.host());
+}
+
+async function startGame(page) {
+  await page.waitForXPath("//*[@id='lobbyPage' and @class='text-center']");
+  await page.evaluate(() => lobby.fireMainButtonEvent());
+  await page.waitForXPath(
+    "//*[@id='qpHiderText' and not(contains(., 'Loading'))]"
+  );
+  console.log("In game");
+}
+
+async function getSong(page) {
+}
+
+async function saveSong(song) {
+  const opts = { args: [song[0], song[1], song[2], song[3], song[4]] };
+  PythonShell.run("write.py", opts, (err) => {
+    if (err) throw err;
+  });
 }
 
 (async () => {
@@ -30,7 +50,17 @@ async function configureSettings(page) {
     defaultViewport: null,
   });
   const page = await browser.newPage();
+
   await login(page);
   await configureSettings(page);
-  browser.disconnect();
+
+  while (page.url() == "https://animemusicquiz.com/") {
+    await startGame(page);
+    for (const i; i < 100; i++) {
+      const song = await getSong(page);
+      await saveSong(song);
+    }
+  }
+
+  browser.disconnect()
 })();
