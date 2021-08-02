@@ -1,7 +1,13 @@
 {
   "type": "module",
+
   "dependencies": {
     "puppeteer": "^10.1.0",
     "python-shell": "^3.0.0"
+  },
+
+  "scripts": {
+    "m": "node scrape.js",
+    "a": "node auto-scrape.js"
   }
 }
