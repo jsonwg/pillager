@@ -1,56 +1,43 @@
-import puppeteer from "puppeteer";
+import { chromium } from "playwright";
 import { PythonShell } from "python-shell";
 
 const USERNAME = process.env.AMQUSER;
 const PASSWORD = process.env.AMQPASS;
-const SETTINGS = process.env.AMQSET;
+const SETTINGS =
+  "6082s1111111132s000011110000002s1111005051o1100k012r02i0a46511002s0111110111002s0111002s01a111111111102a1111111111i01k503-11111--";
 
 async function login(page) {
-  await page.goto("http://animemusicquiz.com");
-  await page.type("#loginUsername", USERNAME);
-  await page.type("#loginPassword", PASSWORD);
+  await page.goto("https://animemusicquiz.com/");
+  await page.fill("text=Username", USERNAME);
+  await page.fill("text=Password", PASSWORD);
   await page.click("#loginButton");
 }
 
 async function configureSettings(page) {
-  await page.waitForXPath(
-    "//*[@id='loadingScreen' and @class='gamePage hidden']"
-  );
-  await page.evaluate(() => hostModal.displayHostSolo());
-  await page.evaluate(() => hostModal.toggleLoadContainer());
-  await new Promise((_) => setTimeout(_, 800));
-
-  await page.click("#mhLoadFromSaveCodeButton");
-  await page.type(".swal2-input", SETTINGS);
-  await new Promise((_) => setTimeout(_, 1000));
-  await page.keyboard.press("Enter");
-
+  await page.click("text=PlaySolo");
+  await page.click("#mhLoadSettingButton >> text=Load");
+  await page.click("text=Load from Code");
+  await page.fill("[placeholder='Setting Code']", SETTINGS);
+  await page.press("[aria-label='']", "Enter");
   await page.evaluate(() => roomBrowser.host());
 }
 
 async function startGame(page) {
-  await page.waitForXPath("//*[@id='lobbyPage' and @class='text-center']");
-  await page.evaluate(() => lobby.fireMainButtonEvent());
-  await page.waitForXPath(
-    "//*[@id='qpHiderText' and not(contains(., 'Loading'))]"
-  );
+  await page.click("#lbStartButton");
+  await page.waitForSelector("#qpHiderText >> text=/^(?!Loading).*$/");
 }
 
 async function getSong(page) {
-  await page.waitForXPath(
-    "//*[@id='qpAnimeNameHider' and not(contains(@class, 'hide'))]"
-  );
+  await page.waitForSelector("#qpAnimeNameHider", { state: "visible" });
   await page.evaluate(() => quiz.skipClicked());
-  await page.waitForXPath(
-    "//*[@id='qpAnimeNameHider' and contains(@class, 'hide')]"
-  );
+  await page.waitForSelector("#qpAnimeNameHider", { state: "hidden" });
   await page.evaluate(() => quiz.skipClicked());
 
   const song = await page.$$eval(
     "#qpAnimeName, #qpSongName, #qpSongArtist, #qpSongType",
-    (elems) => elems.map((e) => e.textContent)
+    (elems) => elems.map((elem) => elem.textContent)
   );
-  song.push(await page.$eval("#qpSongVideoLink", (e) => e.href));
+  song.push(await page.$eval("#qpSongVideoLink", (elem) => elem.href));
   return song;
 }
 
@@ -62,8 +49,9 @@ async function saveSong(song) {
 }
 
 (async () => {
-  const browser = await puppeteer.launch({ defaultViewport: null });
-  const page = await browser.newPage();
+  const browser = await chromium.launch();
+  const context = await browser.newContext({ viewport: null });
+  const page = await context.newPage();
 
   await login(page);
   await configureSettings(page);
@@ -74,5 +62,7 @@ async function saveSong(song) {
       const song = await getSong(page);
       await saveSong(song);
     }
+    break;
   }
+  browser.close();
 })();
