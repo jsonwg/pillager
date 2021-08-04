@@ -5,7 +5,14 @@
     "python-shell": "^3.0.0"
   },
   "scripts": {
-    "m": "node scrape.js",
-    "a": "node auto-scrape.js"
+    "manual": "node ./src/scrape.js",
+    "auto": "node ./src/auto-scrape.js"
+  },
+  "prettier": {
+    "trailingComma" : "es5",
+    "tabWidth" : 2,
+    "semi" : true,
+    "singleQuote" : true,
+    "arrowParens" : "avoid"
   }
 }
