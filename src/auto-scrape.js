@@ -70,7 +70,7 @@ const getSong = async page => {
 };
 
 (async () => {
-  const browser = await chromium.launch({ headles: false });
+  const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext({ viewport: null });
   const page = await context.newPage();
   page.setDefaultTimeout(40000);
