@@ -1,5 +1,7 @@
+#!/usr/bin/env node
+
 import { chromium } from 'playwright';
-import { PythonShell } from 'python-shell';
+import { saveSong, readline } from '../config/config.js';
 
 const detectAMQ = async context => {
   const pages = await context.pages();
@@ -13,20 +15,32 @@ const detectAMQ = async context => {
   return page;
 };
 
+const checkQuit = async () => {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  rl.question('Enter quit to exit: ', input => {
+    rl.close();
+    input = input.trim().toLowerCase();
+    if (['quit', 'q', 'close', 'c'].includes(input)) {
+      process.exit(0);
+    }
+    return checkQuit();
+  });
+};
+
 const getSong = async page => {
   const song = await page.$$eval(
     '#qpAnimeName, #qpSongName, #qpSongArtist, #qpSongType',
-    elems => elems.map(e => e.textContent)
+    elems => elems.map(elem => elem.textContent)
   );
-  song.push(await page.$eval('#qpSongVideoLink', e => e.href));
+  song.push(
+    await page.$eval('#qpSongVideoLink', elem => elem.href),
+    new Date().getTime()
+  );
   return song;
-};
-
-const saveSong = async song => {
-  const opts = { args: [song[0], song[1], song[2], song[3], song[4]] };
-  PythonShell.run('write.py', opts, err => {
-    if (err) throw err;
-  });
 };
 
 (async () => {
@@ -37,10 +51,12 @@ const saveSong = async song => {
   const page = await detectAMQ(context);
   page.setDefaultTimeout(0);
 
-  while (page.url() == 'https://animemusicquiz.com/') {
+  checkQuit();
+
+  while (true) {
     await page.waitForSelector('#qpAnimeNameHider', { state: 'visible' });
+    await page.waitForSelector('#qpAnimeNameHider', { state: 'hidden' });
     const song = await getSong(page);
     await saveSong(song);
-    await page.waitForSelector('#qpAnimeNameHider', { state: 'hidden' });
   }
 })();

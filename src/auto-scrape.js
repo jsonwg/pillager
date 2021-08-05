@@ -1,16 +1,41 @@
-import { chromium } from 'playwright';
-import { PythonShell } from 'python-shell';
+#!/usr/bin/env node
 
-const USERNAME = process.env.AMQUSER;
-const PASSWORD = process.env.AMQPASS;
-const SETTINGS =
-  '6082s1111111132s000011110000002s1111005051o1100k012r02i0a46511002s0111110111002s0111002s01a111111111102a1111111111i01k503-11111--';
+import { chromium } from 'playwright';
+import { config, saveSong, readline } from '../config/config.js';
+
+const USERNAME = config.username;
+const PASSWORD = config.password;
+const SETTINGS = config.settings;
 
 const login = async page => {
   await page.goto('https://animemusicquiz.com/');
   await page.fill('text=Username', USERNAME);
   await page.fill('text=Password', PASSWORD);
   await page.click('#loginButton');
+};
+
+const logout = async page => {
+  page.evaluate(() => lobby.leave());
+  page.evaluate(() => quiz.leave());
+  page.keyboard.press('Enter');
+  page.evaluate(() => options.logout());
+  process.exit(0);
+};
+
+const checkQuit = async page => {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  rl.question('Enter quit to exit: ', input => {
+    rl.close();
+    input = input.trim().toLowerCase();
+    if (['quit', 'q', 'close', 'c'].includes(input)) {
+      logout(page);
+    }
+    return checkQuit();
+  });
 };
 
 const configureSettings = async page => {
@@ -37,27 +62,24 @@ const getSong = async page => {
     '#qpAnimeName, #qpSongName, #qpSongArtist, #qpSongType',
     elems => elems.map(elem => elem.textContent)
   );
-  song.push(await page.$eval('#qpSongVideoLink', elem => elem.href));
+  song.push(
+    await page.$eval('#qpSongVideoLink', elem => elem.href),
+    new Date().getTime()
+  );
   return song;
 };
 
-const saveSong = async song => {
-  const opts = { args: [song[0], song[1], song[2], song[3], song[4]] };
-  PythonShell.run('src/write.py', opts, err => {
-    if (err) throw err;
-  });
-};
-
 (async () => {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch();
   const context = await browser.newContext({ viewport: null });
   const page = await context.newPage();
   page.setDefaultTimeout(40000);
 
   await login(page);
+  checkQuit(page);
   await configureSettings(page);
 
-  while (page.url() == 'https://animemusicquiz.com/') {
+  while (true) {
     await startGame(page);
     for (let i = 0; i < 100; i++) {
       const song = await getSong(page);

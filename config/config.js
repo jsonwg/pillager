@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import readline from 'readline';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -23,8 +24,6 @@ const saveSong = async song => {
 
   const sheets = google.sheets('v4');
 
-  song.push(new Date().getTime());
-
   const request = {
     spreadsheetId: SHEET_ID,
     range: 'Sheet',
@@ -41,4 +40,4 @@ const saveSong = async song => {
   });
 };
 
-export { config, saveSong };
+export { config, saveSong, readline };

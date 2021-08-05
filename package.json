@@ -1,18 +1,36 @@
 {
+  "name": "pillager",
+  "version": "1.0.0",
+  "description": "Scrape AMQ songs manually and or automatically",
+  "homepage": "https://github.com/jsonwg/pillager#readme",
+  "bugs": {
+    "url": "https://github.com/jsonwg/pillager/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jsonwg/pillager.git"
+  },
+  "license": "GPL-3.0+",
+  "author": "jsonwg <ja2415n@gmail.com>",
   "type": "module",
-  "dependencies": {
-    "playwright": "^1.13.1",
-    "python-shell": "^3.0.0"
+  "bin": {
+    "auto": "./src/auto-scrape.js",
+    "manual": "./src/scrape.js"
   },
   "scripts": {
     "manual": "node ./src/scrape.js",
     "auto": "node ./src/auto-scrape.js"
   },
   "prettier": {
-    "trailingComma" : "es5",
-    "tabWidth" : 2,
-    "semi" : true,
-    "singleQuote" : true,
-    "arrowParens" : "avoid"
+    "arrowParens": "avoid",
+    "semi": true,
+    "singleQuote": true,
+    "tabWidth": 2,
+    "trailingComma": "es5"
+  },
+  "dependencies": {
+    "dotenv": "^10.0.0",
+    "googleapis": "^83.0.0",
+    "playwright": "^1.13.1"
   }
 }
