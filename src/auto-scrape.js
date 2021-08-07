@@ -9,16 +9,35 @@ const SETTINGS = config.settings;
 
 const login = async page => {
   await page.goto('https://animemusicquiz.com/');
-  await page.fill('text=Username', USERNAME);
-  await page.fill('text=Password', PASSWORD);
-  await page.click('#loginButton');
+
+  if (await page.$('#loadingScreen')) {
+    return;
+  }
+
+  const regularLogin = async () => {
+    await page.fill('text=Username', USERNAME);
+    await page.fill('text=Password', PASSWORD);
+    await page.click('#loginButton');
+    await page.waitForSelector('#loadingScreen');
+  };
+
+  const alreadyOnline = async () => {
+    await page.waitForSelector('#alreadyOnlineModal[class$="in"]');
+    await page.click('#alreadyOnlineContinueButton');
+  };
+
+  await Promise.race([
+    regularLogin(),
+    alreadyOnline(),
+    page.click('[href="/?forceLogin=True"]'),
+  ]);
 };
 
 const logout = async page => {
-  page.evaluate(() => lobby.leave());
-  page.evaluate(() => quiz.leave());
-  page.keyboard.press('Enter');
-  page.evaluate(() => options.logout());
+  await page.evaluate(() => lobby.leave());
+  await page.evaluate(() => quiz.leave());
+  await page.keyboard.press('Enter');
+  await page.evaluate(() => options.logout());
   process.exit(0);
 };
 
@@ -28,14 +47,19 @@ const checkQuit = async page => {
     output: process.stdout,
   });
 
-  rl.question('Enter quit to exit: ', input => {
+  rl.question('Enter quit to exit: ', async input => {
     rl.close();
     input = input.trim().toLowerCase();
     if (['quit', 'q', 'close', 'c'].includes(input)) {
-      logout(page);
+      await logout(page);
     }
     return checkQuit();
   });
+};
+
+const checkRejoin = async page => {
+  await page.waitForSelector('.swal2-cancel', { state: 'visible' });
+  await page.click('.swal2-cancel');
 };
 
 const configureSettings = async page => {
@@ -50,6 +74,7 @@ const configureSettings = async page => {
 const startGame = async page => {
   await page.click('#lbStartButton');
   await page.waitForSelector('#qpHiderText >> text=/^(?!Loading).*$/');
+  return true;
 };
 
 const getSong = async page => {
@@ -69,21 +94,30 @@ const getSong = async page => {
   return song;
 };
 
+const scraping = async page => {
+  const song = await getSong(page);
+  await saveSong(song);
+};
+
+const inLobby = async page => {
+  await page.waitForSelector('#lobbyPage', { state: 'visible' });
+  inGame = false;
+};
+
 (async () => {
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext({ viewport: null });
   const page = await context.newPage();
-  page.setDefaultTimeout(40000);
 
   await login(page);
   checkQuit(page);
+  checkRejoin(page);
   await configureSettings(page);
 
   while (true) {
-    await startGame(page);
-    for (let i = 0; i < 100; i++) {
-      const song = await getSong(page);
-      await saveSong(song);
+    let inGame = await startGame(page);
+    while (inGame) {
+      await Promise.race([scraping(page), inLobby(page)]);
     }
   }
 })();
