@@ -34,9 +34,6 @@ const login = async page => {
 };
 
 const logout = async page => {
-  await page.evaluate(() => lobby.leave());
-  await page.evaluate(() => quiz.leave());
-  await page.keyboard.press('Enter');
   await page.evaluate(() => options.logout());
   process.exit(0);
 };
@@ -94,16 +91,6 @@ const getSong = async page => {
   return song;
 };
 
-const scraping = async page => {
-  const song = await getSong(page);
-  await saveSong(song);
-};
-
-const inLobby = async (page, inGame) => {
-  await page.waitForSelector('#lobbyPage', { state: 'visible' });
-  inGame = false;
-};
-
 (async () => {
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext({ viewport: null });
@@ -117,7 +104,17 @@ const inLobby = async (page, inGame) => {
   while (true) {
     let inGame = await startGame(page);
     while (inGame) {
-      await Promise.race([scraping(page), inLobby(page, inGame)]);
+      const scraping = async () => {
+        const song = await getSong(page);
+        await saveSong(song);
+      };
+
+      const checkForLobby = async () => {
+        await page.waitForSelector('#lobbyPage');
+        inGame = false;
+      };
+
+      await Promise.race([scraping(), checkForLobby()]);
     }
   }
 })();
