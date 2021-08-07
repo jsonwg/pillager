@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
 import { chromium } from 'playwright';
-import { config, saveSong, readline } from '../config/config.js';
+import { config, saveSong } from '../config/config.js';
 
 const USERNAME = config.username;
 const PASSWORD = config.password;
 const SETTINGS = config.settings;
+const EXCLUSIONS = ['image', 'font', 'other'];
 
 const login = async page => {
   await page.goto('https://animemusicquiz.com/');
@@ -33,24 +34,12 @@ const login = async page => {
   ]);
 };
 
-const logout = async page => {
-  await page.evaluate(() => options.logout());
-  process.exit(0);
-};
-
 const checkQuit = async page => {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  rl.question('Enter quit to exit: ', async input => {
-    rl.close();
-    input = input.trim().toLowerCase();
-    if (['quit', 'q', 'close', 'c'].includes(input)) {
-      await logout(page);
-    }
-    return checkQuit();
+  ['SIGHUP', 'SIGBREAK', 'SIGTERM', 'SIGINT'].forEach(sig => {
+    process.on(sig, async () => {
+      console.log(`\nExiting program due to ${sig}...`);
+      await page.evaluate(() => options.logout()).finally(process.exit(0));
+    });
   });
 };
 
@@ -91,30 +80,35 @@ const getSong = async page => {
   return song;
 };
 
+const scraping = async page => {
+  const song = await getSong(page);
+  await saveSong(song);
+  return true;
+};
+const checkForLobby = async page => {
+  await page.waitForSelector('#lobbyPage');
+  return false;
+};
+
 (async () => {
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext({ viewport: null });
   const page = await context.newPage();
+  await page.route('**/*', route => {
+    return EXCLUSIONS.includes(route.request().resourceType())
+      ? route.abort()
+      : route.continue();
+  });
+  await checkQuit(page);
 
   await login(page);
-  checkQuit(page);
   checkRejoin(page);
   await configureSettings(page);
 
   while (true) {
     let inGame = await startGame(page);
     while (inGame) {
-      const scraping = async () => {
-        const song = await getSong(page);
-        await saveSong(song);
-      };
-
-      const checkForLobby = async () => {
-        await page.waitForSelector('#lobbyPage');
-        inGame = false;
-      };
-
-      await Promise.race([scraping(), checkForLobby()]);
+      inGame = await Promise.race([scraping(page), checkForLobby(page)]);
     }
   }
 })();
