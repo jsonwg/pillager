@@ -117,7 +117,7 @@ const inLobby = async page => {
   while (true) {
     let inGame = await startGame(page);
     while (inGame) {
-      await Promise.race([scraping(page), inLobby(page)]);
+      await Promise.race([scraping(page), inLobby(page, ingame)]);
     }
   }
 })();
