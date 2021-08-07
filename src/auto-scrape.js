@@ -99,7 +99,7 @@ const scraping = async page => {
   await saveSong(song);
 };
 
-const inLobby = async page => {
+const inLobby = async (page, inGame) => {
   await page.waitForSelector('#lobbyPage', { state: 'visible' });
   inGame = false;
 };
