@@ -58,11 +58,6 @@ const checkQuit = async page => {
   });
 };
 
-const checkRejoin = async page => {
-  await page.waitForSelector('.swal2-cancel', { state: 'visible' });
-  await page.click('.swal2-cancel');
-};
-
 const configureSettings = async page => {
   await page.click('text=PlaySolo');
   await page.click('#mhLoadSettingButton >> text=Load');
@@ -108,15 +103,17 @@ const checkForLobby = async page => {
 };
 
 (async () => {
-  const browser = await chromium.launch({ headless: false });
+  const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: null });
   const page = await context.newPage();
   await routeRequests(page);
 
   await checkQuit(page);
   await login(page);
-  checkRejoin(page);
-  await configureSettings(page);
+  await Promise.race([
+    Promise.all([page.click('.swal2-cancel'), configureSettings(page)]),
+    configureSettings(page),
+  ]);
 
   while (true) {
     let inGame = await startGame(page);
