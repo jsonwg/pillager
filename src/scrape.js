@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { chromium } from 'playwright';
-import { saveSong, readline } from '../config/config.js';
+import { saveSong } from '../config/config.js';
 
 const detectAMQ = async context => {
   const pages = await context.pages();
@@ -15,19 +15,12 @@ const detectAMQ = async context => {
   return page;
 };
 
-const checkQuit = async () => {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  rl.question('Enter quit to exit: ', input => {
-    rl.close();
-    input = input.trim().toLowerCase();
-    if (['quit', 'q', 'close', 'c'].includes(input)) {
-      process.exit(0);
-    }
-    return checkQuit();
+const checkQuit = async page => {
+  ['SIGHUP', 'SIGBREAK', 'SIGTERM', 'SIGINT'].forEach(sig => {
+    process.on(sig, async () => {
+      console.log(`\nExiting program due to ${sig}...`);
+      await page.evaluate(() => options.logout()).finally(process.exit(0));
+    });
   });
 };
 
@@ -50,8 +43,7 @@ const getSong = async page => {
   const context = browser.contexts()[0];
   const page = await detectAMQ(context);
   page.setDefaultTimeout(0);
-
-  checkQuit();
+  await checkQuit(page);
 
   while (true) {
     await page.waitForSelector('#qpAnimeNameHider', { state: 'visible' });
