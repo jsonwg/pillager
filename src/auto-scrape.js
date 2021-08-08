@@ -71,7 +71,8 @@ const configureSettings = async page => {
 };
 
 const startGame = async page => {
-  await page.click('#lbStartButton');
+  await page.waitForSelector('#lobbyPage');
+  await page.evaluate(() => lobby.fireMainButtonEvent());
   await page.waitForSelector('#qpHiderText >> text=/^(?!Loading).*$/');
   return true;
 };
@@ -105,7 +106,7 @@ const checkForLobby = async page => {
 };
 
 (async () => {
-  const browser = await chromium.launch({ headless: false });
+  const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: null });
   const page = await context.newPage();
   await routeRequests(page);
