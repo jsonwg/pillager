@@ -19,7 +19,8 @@
   },
   "scripts": {
     "manual": "node ./src/scrape.js",
-    "auto": "node ./src/auto-scrape.js"
+    "auto": "node ./src/auto-scrape.js",
+    "block": "node ./src/auto-scrape.js block"
   },
   "prettier": {
     "arrowParens": "avoid",

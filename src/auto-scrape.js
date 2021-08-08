@@ -37,9 +37,11 @@ const login = async page => {
 const routeRequests = async page => {
   await page.route('**/*', route => {
     const isDupeSong =
-      route.request().url().includes('webm') &&
-      !route.request().url().includes('moeVideo') &&
-      !route.request().redirectedFrom();
+      process.argv.length == 3
+        ? route.request().url().includes('webm') &&
+          !route.request().url().includes('moeVideo') &&
+          !route.request().redirectedFrom()
+        : null;
 
     return EXCLUSIONS.includes(route.request().resourceType()) || isDupeSong
       ? route.abort()
