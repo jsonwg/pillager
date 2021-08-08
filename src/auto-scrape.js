@@ -106,7 +106,7 @@ const checkForLobby = async page => {
 };
 
 (async () => {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext({ viewport: null });
   const page = await context.newPage();
   await routeRequests(page);
