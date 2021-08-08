@@ -67,6 +67,11 @@ const configureSettings = async page => {
   await page.evaluate(() => roomBrowser.host());
 };
 
+const cancelRejoin = async page => {
+  await page.click('.swal2-cancel');
+  await configureSettings(page);
+};
+
 const startGame = async page => {
   await page.waitForSelector('#lobbyPage');
   await page.evaluate(() => lobby.fireMainButtonEvent());
@@ -98,22 +103,20 @@ const scraping = async page => {
 };
 
 const checkForLobby = async page => {
-  await page.waitForSelector('#lobbyPage', { timeout: 60000 });
+  await page.waitForSelector('#lobbyPage');
   return false;
 };
 
 (async () => {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext({ viewport: null });
   const page = await context.newPage();
+  page.setDefaultTimeout(60000);
   await routeRequests(page);
 
   await checkQuit(page);
   await login(page);
-  await Promise.race([
-    Promise.all([page.click('.swal2-cancel'), configureSettings(page)]),
-    configureSettings(page),
-  ]);
+  await Promise.race([cancelRejoin(page), configureSettings(page)]);
 
   while (true) {
     let inGame = await startGame(page);
