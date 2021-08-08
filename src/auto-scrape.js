@@ -98,8 +98,9 @@ const scraping = async page => {
   await saveSong(song);
   return true;
 };
+
 const checkForLobby = async page => {
-  await page.waitForSelector('#lobbyPage');
+  await page.waitForSelector('#lobbyPage', { timeout: 60000 });
   return false;
 };
 
