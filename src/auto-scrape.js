@@ -34,6 +34,19 @@ const login = async page => {
   ]);
 };
 
+const routeRequests = async page => {
+  await page.route('**/*', route => {
+    const isDupeSong =
+      route.request().url().includes('webm') &&
+      !route.request().url().includes('moeVideo') &&
+      !route.request().redirectedFrom();
+
+    return EXCLUSIONS.includes(route.request().resourceType()) || isDupeSong
+      ? route.abort()
+      : route.continue();
+  });
+};
+
 const checkQuit = async page => {
   ['SIGHUP', 'SIGBREAK', 'SIGTERM', 'SIGINT'].forEach(sig => {
     process.on(sig, async () => {
@@ -94,13 +107,9 @@ const checkForLobby = async page => {
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext({ viewport: null });
   const page = await context.newPage();
-  await page.route('**/*', route => {
-    return EXCLUSIONS.includes(route.request().resourceType())
-      ? route.abort()
-      : route.continue();
-  });
-  await checkQuit(page);
+  await routeRequests(page);
 
+  await checkQuit(page);
   await login(page);
   checkRejoin(page);
   await configureSettings(page);
