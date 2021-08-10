@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { chromium } from 'playwright';
+import { chromium, errors } from 'playwright';
 import { config, saveSong } from '../config/config.js';
 
 const USERNAME = config.username;
@@ -8,33 +8,28 @@ const PASSWORD = config.password;
 const SETTINGS = config.settings;
 const EXCLUSIONS = ['image', 'font', 'other'];
 
-const login = async page => {
+async function login(page) {
   await page.goto('https://animemusicquiz.com/');
 
   if (await page.$('#loadingScreen')) {
     return;
   }
 
-  const regularLogin = async () => {
+  try {
     await page.fill('text=Username', USERNAME);
     await page.fill('text=Password', PASSWORD);
     await page.click('#loginButton');
-    await page.waitForSelector('#loadingScreen');
-  };
+    await page.waitForSelector('#loadingScreen', { timeout: 5000 });
+  } catch (e) {
+    if (e instanceof errors.TimeoutError) {
+      await page.click('#alreadyOnlineContinueButton');
+    } else {
+      throw e;
+    }
+  }
+}
 
-  const alreadyOnline = async () => {
-    await page.waitForSelector('#alreadyOnlineModal[class$="in"]');
-    await page.click('#alreadyOnlineContinueButton');
-  };
-
-  await Promise.race([
-    regularLogin(),
-    alreadyOnline(),
-    page.click('[href="/?forceLogin=True"]'),
-  ]);
-};
-
-const routeRequests = async page => {
+async function routeRequests(page) {
   await page.route('**/*', route => {
     const isDupeSong =
       process.argv.length == 3
@@ -47,39 +42,42 @@ const routeRequests = async page => {
       ? route.abort()
       : route.continue();
   });
-};
+}
 
-const checkQuit = async page => {
+async function checkQuit(page) {
   ['SIGHUP', 'SIGBREAK', 'SIGTERM', 'SIGINT'].forEach(sig => {
     process.on(sig, async () => {
       console.log(`\nExiting program due to ${sig}...`);
       await page.evaluate(() => options.logout()).finally(process.exit(0));
     });
   });
-};
+}
 
-const configureSettings = async page => {
+async function configureSettings(page) {
+  try {
+    await page.click('.swal2-cancel', { timeout: 10000 });
+  } catch (e) {
+    if (e instanceof errors.TimeoutError) {
+      // No prompt was given to rejoin
+    } else {
+      throw e;
+    }
+  }
+
   await page.click('text=PlaySolo');
   await page.click('#mhLoadSettingButton >> text=Load');
   await page.click('text=Load from Code');
   await page.fill('[placeholder="Setting Code"]', SETTINGS);
   await page.press('[aria-label=""]', 'Enter');
   await page.evaluate(() => roomBrowser.host());
-};
+}
 
-const cancelRejoin = async page => {
-  await page.click('.swal2-cancel');
-  await configureSettings(page);
-};
-
-const startGame = async page => {
-  await page.waitForSelector('#lobbyPage');
-  await page.evaluate(() => lobby.fireMainButtonEvent());
+async function startGame(page) {
+  await page.click('#lbStartButton');
   await page.waitForSelector('#qpHiderText >> text=/^(?!Loading).*$/');
-  return true;
-};
+}
 
-const getSong = async page => {
+async function getSong(page) {
   await page.waitForSelector('#qpAnimeNameHider', { state: 'visible' });
   await page.evaluate(() => quiz.skipClicked());
   await page.waitForSelector('#qpAnimeNameHider', { state: 'hidden' });
@@ -94,34 +92,37 @@ const getSong = async page => {
     new Date().getTime()
   );
   return song;
-};
+}
 
-const scraping = async page => {
-  const song = await getSong(page);
-  await saveSong(song);
-  return true;
-};
-
-const checkForLobby = async page => {
-  await page.waitForSelector('#lobbyPage');
-  return false;
-};
+async function inGame(page) {
+  async function scraping(page) {
+    try {
+      const song = await getSong(page);
+      await saveSong(song);
+      return scraping(page);
+    } catch (e) {
+      if (e instanceof errors.TimeoutError) {
+        return;
+      } else {
+        throw e;
+      }
+    }
+  }
+  return await scraping(page);
+}
 
 (async () => {
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext({ viewport: null });
   const page = await context.newPage();
-  page.setDefaultTimeout(60000);
   await routeRequests(page);
 
   await checkQuit(page);
   await login(page);
-  await Promise.race([cancelRejoin(page), configureSettings(page)]);
+  await configureSettings(page);
 
   while (true) {
-    let inGame = await startGame(page);
-    while (inGame) {
-      inGame = await Promise.race([scraping(page), checkForLobby(page)]);
-    }
+    await startGame(page);
+    await inGame(page);
   }
 })();
