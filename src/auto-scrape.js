@@ -19,7 +19,7 @@ async function login(page) {
     await page.fill('text=Username', USERNAME);
     await page.fill('text=Password', PASSWORD);
     await page.click('#loginButton');
-    await page.waitForSelector('#loadingScreen', { timeout: 5000 });
+    await page.waitForSelector('#loadingScreen', { timeout: 15000 });
   } catch (e) {
     if (e instanceof errors.TimeoutError) {
       await page.click('#alreadyOnlineContinueButton');
@@ -55,7 +55,7 @@ async function checkQuit(page) {
 
 async function configureSettings(page) {
   try {
-    await page.click('.swal2-cancel', { timeout: 10000 });
+    await page.click('.swal2-cancel', { timeout: 15000 });
   } catch (e) {
     if (e instanceof errors.TimeoutError) {
       // No prompt was given to rejoin
